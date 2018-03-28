@@ -35,7 +35,7 @@ namespace Web.Controllers.Api
         [HttpGet]
         public async Task<IActionResult> TopMovies()
         {
-            var topFiveRatings = await _movieService.GetTopMoviesBasedOnTotalUserAverageRatings(5);
+            var topFiveRatings = await _movieService.GetTopMoviesBasedOnTotalUserAverageRatingsAsync(5);
             if (topFiveRatings.Count <= 0)
             {
                 return NotFound("No movies were found.");
@@ -44,21 +44,48 @@ namespace Web.Controllers.Api
             return Ok(topFiveRatings);
         }
 
-        [HttpGet]
-        public async Task<IActionResult> TopUserMovies(int userId)
+        [HttpGet("{userId}")]
+        public async Task<IActionResult> TopMovies(int userId)
         {
             if (userId <= 0)
             {
                 return BadRequest("Invalid user id.");
             }
 
-            var topFiveUserMovies = await _movieService.GetTopMoviesBasedOnHighestUserRating(5, userId);
+            var topFiveUserMovies = await _movieService.GetTopMoviesBasedOnHighestUserRatingAsync(5, userId);
             if (topFiveUserMovies.Count <= 0)
             {
                 return NotFound("No movies were found.");
             }
 
             return Ok(topFiveUserMovies);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddRating(int movieId, int userId, int rating)
+        {
+            if (movieId <= 0)
+            {
+                return BadRequest("Invalid movie id.");
+            }
+
+            if (userId <= 0)
+            {
+                return BadRequest("Invalid user id.");
+            }
+
+            if (rating < 1 || rating > 5)
+            {
+                return BadRequest("Rating must be between 1 and 5.");
+            }
+
+            bool ratingAdded = await _movieService.AddRatingAsync(movieId, userId, rating);
+            if (!ratingAdded)
+            {
+                return NotFound("Could not add the rating.");
+            }
+
+            return Ok();
         }
     }
 }

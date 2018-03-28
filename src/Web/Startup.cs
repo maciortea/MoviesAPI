@@ -26,10 +26,11 @@ namespace Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationDbContext>(c => c.UseInMemoryDatabase("MovieRatings"));
-            services.AddMvc();
-            services.AddScoped(typeof(IAsyncRepository<>), typeof(EfRepository<>));
             services.AddScoped(typeof(IMovieRatingRepository), typeof(MovieRatingRepository));
+            services.AddScoped(typeof(IMovieRepository), typeof(MovieRepository));
+            services.AddScoped(typeof(IUserRepository), typeof(UserRepository));
             services.AddScoped(typeof(IMovieService), typeof(MovieService));
+            services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

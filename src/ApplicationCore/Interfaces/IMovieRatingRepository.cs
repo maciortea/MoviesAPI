@@ -5,10 +5,13 @@ using System.Threading.Tasks;
 
 namespace ApplicationCore.Interfaces
 {
-    public interface IMovieRatingRepository : IAsyncRepository<MovieUserRating>
+    public interface IMovieRatingRepository
     {
         Task<IReadOnlyList<MovieDto>> QueryMoviesAsync(string title, string genre, int? yearOfRelease = null);
-        Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnTotalUserAverageRatings(int takeCount);
-        Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnHighestUserRating(int takeCount, int userId);
+        Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnTotalUserAverageRatingsAsync(int takeCount);
+        Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnHighestUserRatingAsync(int takeCount, int userId);
+        Task<MovieUserRating> GetByIdAsync(int movieId, int userId);
+        Task CreateAsync(MovieUserRating movieUserRating);
+        Task UpdateAsync(MovieUserRating movieUserRating);
     }
 }

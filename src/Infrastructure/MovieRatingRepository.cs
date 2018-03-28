@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Infrastructure
 {
-    public class MovieRatingRepository : EfRepository<MovieUserRating>, IMovieRatingRepository
+    public class MovieRatingRepository : BaseRepository, IMovieRatingRepository
     {
         public MovieRatingRepository(ApplicationDbContext dbContext) : base(dbContext)
         {
@@ -16,9 +16,7 @@ namespace Infrastructure
 
         public async Task<IReadOnlyList<MovieDto>> QueryMoviesAsync(string title, string genre, int? yearOfRelease = null)
         {
-            var query = _dbContext.Ratings
-                .Include(r => r.Movie)
-                .AsQueryable();
+            var query = _dbContext.Ratings.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(title))
             {
@@ -35,56 +33,51 @@ namespace Infrastructure
                 query = query.Where(r => r.Movie.MovieGenres.Any(x => x.Genre.Name.ToLower() == genre.ToLower()));
             }
 
-            return await query
-                .GroupBy(r => new
-                {
-                    r.MovieId,
-                    r.Movie.Title,
-                    r.Movie.YearOfRelease,
-                    r.Movie.RunningTimeInMinutes
-                })
-                .Select(r => new MovieDto
-                {
-                    Id = r.Key.MovieId,
-                    Title = r.Key.Title,
-                    YearOfRelease = r.Key.YearOfRelease,
-                    RunningTime = r.Key.RunningTimeInMinutes,
-                    AverageRatingInternal = r.Average(x => x.Rating)
-                })
-                .OrderBy(r => r.YearOfRelease)
+            return await ProjectMoviesQuery(query)
+                .OrderBy(r => r.Title)
                 .ToListAsync();
         }
 
-        public async Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnTotalUserAverageRatings(int takeCount)
+        public async Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnTotalUserAverageRatingsAsync(int takeCount)
         {
-            return await _dbContext.Ratings
-                .Include(r => r.Movie)
-                .GroupBy(r => new
-                {
-                    r.MovieId,
-                    r.Movie.Title,
-                    r.Movie.YearOfRelease,
-                    r.Movie.RunningTimeInMinutes
-                })
-                .Select(r => new MovieDto
-                {
-                    Id = r.Key.MovieId,
-                    Title = r.Key.Title,
-                    YearOfRelease = r.Key.YearOfRelease,
-                    RunningTime = r.Key.RunningTimeInMinutes,
-                    AverageRatingInternal = r.Average(x => x.Rating)
-                })
+            var query = _dbContext.Ratings.AsQueryable();
+            return await ProjectMoviesQuery(query)
                 .OrderByDescending(r => r.AverageRatingInternal)
                 .ThenBy(r => r.Title)
                 .Take(takeCount)
                 .ToListAsync();
         }
 
-        public async Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnHighestUserRating(int takeCount, int userId)
+        public async Task<IReadOnlyList<MovieDto>> GetTopMoviesBasedOnHighestUserRatingAsync(int takeCount, int userId)
         {
-            return await _dbContext.Ratings
-                .Include(r => r.Movie)
-                .Where(r => r.UserId == userId)
+            var query = _dbContext.Ratings.Where(r => r.UserId == userId).AsQueryable();
+            return await ProjectMoviesQuery(query)
+                .OrderByDescending(r => r.AverageRatingInternal)
+                .ThenBy(r => r.Title)
+                .Take(takeCount)
+                .ToListAsync();
+        }
+
+        public async Task<MovieUserRating> GetByIdAsync(int movieId, int userId)
+        {
+            return await _dbContext.Ratings.FindAsync(movieId, userId);
+        }
+
+        public async Task CreateAsync(MovieUserRating movieUserRating)
+        {
+            _dbContext.Ratings.Add(movieUserRating);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task UpdateAsync(MovieUserRating movieUserRating)
+        {
+            _dbContext.Entry(movieUserRating).State = EntityState.Modified;
+            await _dbContext.SaveChangesAsync();
+        }
+
+        private IQueryable<MovieDto> ProjectMoviesQuery(IQueryable<MovieUserRating> query)
+        {
+            return query
                 .GroupBy(r => new
                 {
                     r.MovieId,
@@ -99,11 +92,7 @@ namespace Infrastructure
                     YearOfRelease = r.Key.YearOfRelease,
                     RunningTime = r.Key.RunningTimeInMinutes,
                     AverageRatingInternal = r.Average(x => x.Rating)
-                })
-                .OrderByDescending(r => r.AverageRatingInternal)
-                .ThenBy(r => r.Title)
-                .Take(takeCount)
-                .ToListAsync();
+                });
         }
     }
 }
